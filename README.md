@@ -35,3 +35,5 @@ BTC and ETH count as about 1.3 independent observations. Only coins alive today 
 
 ## Contributing
 See `CONTRIBUTING.md`. Pull requests that add a spec file and nothing else are the easiest to review.
+
+Note: `examples/*.py` are our earlier research scripts, kept for reference (they expect the original `hist_*.json` file layout and are not part of the gate).

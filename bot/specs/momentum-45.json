@@ -1,0 +1,1 @@
+{"name":"momentum-45","author":"cryptobaas","hypothesis":"Long while the close is above the close 45 days earlier (the rule our dry-run bot used) lowers max drawdown versus 55/20 on BTC and ETH.","null":"Random placement of the same in-market runs gives the same drawdown.","primary_metric":"maxdd","rules":[{"type":"momentum","k":45}],"combine":"mean","sizing":{"type":"none"}}

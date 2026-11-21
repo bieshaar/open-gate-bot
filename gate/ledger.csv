@@ -1,0 +1,14 @@
+date_utc,event,name,author,spec_hash,trials,verdict,detail
+2026-11-20,historical,bt_history.py first rule set,cryptobaas,,5,not gated,"RSI, breakout and other first five rules; counts taken from our own logs, overlaps not removed (generous)"
+2026-11-20,historical,quant subagent walk-forward variants,cryptobaas,,20,not gated,"variants tried in the first walk-forward; counts taken from our own logs, overlaps not removed (generous)"
+2026-11-20,historical,bt2/strategies_log gates,cryptobaas,,5,not gated,"hold, SMA200 gate, dual momentum 90d, vol-target SMA100, 30d momentum gate; counts taken from our own logs, overlaps not removed (generous)"
+2026-11-20,historical,momentum lookback sweep,cryptobaas,,7,not gated,"k=10..120; counts taken from our own logs, overlaps not removed (generous)"
+2026-11-20,historical,wf_grid.py grid,cryptobaas,,26,not gated,"breakout, sma, momentum grid; train 2019-23, test 2024-26; counts taken from our own logs, overlaps not removed (generous)"
+2026-11-20,historical,search.py families,cryptobaas,,18,not gated,"momentum/sma/breakout ensembles and singles; counts taken from our own logs, overlaps not removed (generous)"
+2026-11-20,historical,rs.py relative strength grid,cryptobaas,,18,not gated,"k 30/60/90, N 2/3/5, filter on/off; counts taken from our own logs, overlaps not removed (generous)"
+2026-11-20,historical,short_bt.py hourly rules,cryptobaas,,17,not gated,"intraday rules, all lost to fees; counts taken from our own logs, overlaps not removed (generous)"
+2026-11-20,historical,five rules x 18 window cells (placebo thesis),cryptobaas,,5,not gated,"5 rules tried on 18 window cells; counted as 5 rules; counts taken from our own logs, overlaps not removed (generous)"
+2026-11-21T14:59:04Z,registered,baseline-55-20,cryptobaas,4035b257aa954659e31957afe7e7b19882c51ebad3459e33d0027c2311135248,1,,primary_metric=maxdd; registered before results; author's variants incl. this: 1
+2026-11-21T14:59:04Z,result,baseline-55-20,cryptobaas,4035b257aa954659e31957afe7e7b19882c51ebad3459e33d0027c2311135248,0,BASELINE,champion itself; check 4 cannot pass by design (verdict label corrected by hand after the first run)
+2026-11-21T14:59:14Z,registered,example-regime-halve,cryptobaas,cfa165dbc7f97a157aed07fca7fdc1e6a178a87be9054ddad39e3d101027cf63,1,,primary_metric=maxdd; registered before results; author's variants incl. this: 2
+2026-11-21T14:59:14Z,result,example-regime-halve,cryptobaas,cfa165dbc7f97a157aed07fca7fdc1e6a178a87be9054ddad39e3d101027cf63,0,REJECTED,1 regression BTC-EUR=F; 2 placebo BTC-EUR=F; 5 robustness ex-2022 BTC-EUR=F; 5 robustness fees x2 BTC-EUR=F; 1 regression ETH-EUR=F; 5 robustness ex-2022 ETH-EUR=F; 5 robustness fees x2 ETH-EUR=F; 4 holdout vs constant exposure=F

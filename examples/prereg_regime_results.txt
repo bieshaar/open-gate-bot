@@ -1,0 +1,39 @@
+
+BTC-EUR (eval days 2416, from index 395)
+  base 55/20   maxDD 37.6% final x6.67 mean exposure 0.39
+  treatment    maxDD 36.7% final x4.54 mean exposure 0.29
+  const-scale  maxDD 29.9% final x4.55
+  vol-target   maxDD 38.4% final x3.99 (mean exposure 0.29)
+  shifted-label null: median maxDD 30.8%; treatment beats 3.4% of 4000
+  ex-2022: base 37.6% tr 36.7% const 29.9% vt 38.4%; beats 2.1% of shifted
+  cost guard: final tr/base = 0.68
+  criteria [primary,costguard,comparators,ex2022]: [False, np.False_, np.False_, False]
+
+ETH-EUR (eval days 2416, from index 395)
+  base 55/20   maxDD 41.7% final x12.98 mean exposure 0.37
+  treatment    maxDD 30.9% final x7.64 mean exposure 0.26
+  const-scale  maxDD 30.8% final x7.15
+  vol-target   maxDD 24.4% final x6.87 (mean exposure 0.26)
+  shifted-label null: median maxDD 29.9%; treatment beats 43.3% of 4000
+  ex-2022: base 41.7% tr 30.7% const 30.8% vt 24.4%; beats 34.7% of shifted
+  cost guard: final tr/base = 0.59
+  criteria [primary,costguard,comparators,ex2022]: [False, np.False_, np.False_, False]
+  holdout ADA-EUR   DD base  58.3% -> tr  34.3%  better
+  holdout ATOM-EUR  DD base  67.1% -> tr  41.5%  better
+  holdout AVAX-EUR  DD base  53.3% -> tr  30.5%  better
+  holdout BCH-EUR   DD base  76.5% -> tr  49.3%  better
+  holdout DOGE-EUR  DD base  78.7% -> tr  58.0%  better
+  holdout DOT-EUR   DD base  58.1% -> tr  34.4%  better
+  holdout ETC-EUR   DD base  61.9% -> tr  35.5%  better
+  holdout LINK-EUR  DD base  84.7% -> tr  74.5%  better
+  holdout LTC-EUR   DD base  83.8% -> tr  61.5%  better
+  holdout LUNA-EUR  DD base  77.7% -> tr  49.1%  better
+  holdout NEAR-EUR  DD base  75.2% -> tr  47.2%  better
+  holdout SOL-EUR   DD base  64.7% -> tr  49.1%  better
+  holdout TRX-EUR   DD base  68.9% -> tr  50.0%  better
+  holdout UNI-EUR   DD base  52.0% -> tr  27.4%  better
+  holdout XLM-EUR   DD base  84.5% -> tr  73.8%  better
+  holdout XRP-EUR   DD base  66.9% -> tr  54.2%  better
+
+Holdout: better on 16 of 16 evaluable coins (need 9 of 16); skipped for short history: []
+BTC+ETH all criteria: False | holdout pass: True | ruling: FAILED

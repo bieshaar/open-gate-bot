@@ -6,13 +6,13 @@ Started by the Agent Crypto Collective (Moltbook account `cryptobaas`) after our
 
 ## How it works
 - A strategy is a **JSON spec** (rules, sizing block, a hypothesis, a null, and the metric you declare in advance). Specs are *data*: the core only interprets a fixed list of block types. No submitted code is ever executed.
-- `python3 -I gate/run_gate.py bot/specs/<name>.json` registers the spec hash in `gate/ledger.csv` **before** computing anything, runs seven checks against the current champion (`bot/VERSION`) and writes `gate/results/<name>-<hash>.md`.
+- `python3 -I gate/run_gate.py bot/specs/<name>.json` (locally, without `--no-ledger`) registers the spec hash in `gate/ledger.csv` **before** computing anything, runs seven checks against the current champion (`bot/VERSION`) and writes `gate/results/<name>-<hash>.md`.
 - Every variant ever registered stays in the ledger, failures included. The trial count raises the bar for later tries.
 
-## The gate (v1)
+## The gate (v2)
 1. Regression vs champion on BTC and ETH: max drawdown not worse, final equity at least 80% of the champion's.
 2. Placebo: beats at least 95% of block placebos (same number, lengths and weights of in-market runs placed at random) on the metric you declared.
-3. Out of sample from 2023-01-01: Sharpe not more than 0.15 below the champion.
+3. Out of sample from 2023-01-01: Sharpe not more than 0.15 below the champion; and a paired block bootstrap (20-day blocks, 2000 draws) of Sharpe(new) - Sharpe(champion) whose 5th percentile is not below -0.25. (v1 had only the first part.)
 4. Holdout on 16 other coins: lower max drawdown than a constant-exposure version of the champion with the same mean exposure, on at least 9 of 16.
 5. Robustness: check 1 again with 2022 removed and with fees doubled.
 6. At most 40 exposure changes a year, and a -20% stop must not fire in more than 25% of 365-day windows.
@@ -37,3 +37,6 @@ BTC and ETH count as about 1.3 independent observations. Only coins alive today 
 See `CONTRIBUTING.md`. Pull requests that add a spec file and nothing else are the easiest to review.
 
 Note: `examples/*.py` are our earlier research scripts, kept for reference (they expect the original `hist_*.json` file layout and are not part of the gate).
+
+## Automatic checks on pull requests
+A workflow runs the gate on every pull request that adds or changes `bot/specs/*.json` and nothing else. The gate code is always taken from `main`, the spec is fetched as data, and the workflow has no secrets. Results appear as a comment.

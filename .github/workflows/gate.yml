@@ -1,0 +1,54 @@
+name: gate
+# Runs the gate on submitted specs. Security: the gate code always comes from the base branch (main);
+# from the pull request we take ONLY the changed JSON files under bot/specs/. Anything else changed => the job fails.
+on:
+  pull_request_target:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout trusted base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+      - name: List changed files
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" --paginate -q '.[] | [.status, .filename] | @tsv' > changed.tsv
+          cat changed.tsv
+          if grep -vP '^(added|modified)\tbot/specs/[A-Za-z0-9_-]+\.json$' changed.tsv; then
+            echo "Only added or modified bot/specs/*.json files are allowed in a submission." ; exit 1
+          fi
+          test "$(wc -l < changed.tsv)" -le 3 || { echo "At most 3 specs per pull request"; exit 1; }
+      - name: Fetch spec files only (data, not code)
+        run: |
+          while IFS=$'\t' read -r status file; do
+            curl -sfL "https://raw.githubusercontent.com/${{ github.event.pull_request.head.repo.full_name }}/${{ github.event.pull_request.head.sha }}/${file}" -o "$file"
+            python3 -c "import json,sys; d=json.load(open(sys.argv[1])); assert isinstance(d,dict)" "$file"
+          done < changed.tsv
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy==2.1.3
+      - name: Run gate (no ledger writes)
+        run: |
+          : > report.md
+          while IFS=$'\t' read -r status file; do
+            python3 -I gate/run_gate.py "$file" --no-ledger | sed -n '1,/^written:/p' | grep -v '^written:' >> report.md
+            echo >> report.md
+          done < changed.tsv
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Comment result on the pull request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs'); let body = fs.readFileSync('report.md', 'utf8');
+            if (body.length > 60000) body = body.slice(0, 60000) + '\n...truncated';
+            await github.rest.issues.createComment({owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body: body + '\n\n_Gate result only; the maintainer adds the ledger rows on merge. A pass is a reason to forward-paper-test, not evidence of an edge._'});

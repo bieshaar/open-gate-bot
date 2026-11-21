@@ -1,4 +1,4 @@
-"""The gate (v2). Usage: python3 -I gate/run_gate.py bot/specs/<name>.json [--draws 2000] [--no-ledger]
+"""The gate (v2). Usage: python3 -I gate/run_gate.py bot/specs/<name>.json [--draws 2000] [--no-ledger] [--out DIR]
 Registers the spec hash in gate/ledger.csv BEFORE any result is computed, runs all checks against the current
 champion (bot/VERSION), writes gate/results/<name>-<hash12>.md and appends the verdict to the ledger.
 Gate v2 (2026-11-21): adds a paired block-bootstrap check of the Sharpe difference (v1 results stay valid under v1).
@@ -8,7 +8,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, os.path.join(HERE, '..', 'bot'))
 import core
 NO_LEDGER = '--no-ledger' in sys.argv
-LEDGER = os.path.join(HERE, 'ledger.csv'); RES = os.path.join(HERE, 'results')
+LEDGER = os.path.join(HERE, 'ledger.csv'); RES = sys.argv[sys.argv.index('--out') + 1] if '--out' in sys.argv else os.path.join(HERE, 'results')
 GATE_VERSION = 'v2'; BOOT_BLOCK = 20; BOOT_DRAWS = 2000; BOOT_FLOOR = -0.25
 OOS_FROM = '2023-01-01'; OOS_TOL = 0.15; PLACEBO_SHARE = 0.95; DD_FLOOR = 0.80; HOLDOUT_MIN = 9
 MAX_CHANGES_YR = 40; MAX_KILL_SHARE = 0.25; KILL_LEVEL = 0.80

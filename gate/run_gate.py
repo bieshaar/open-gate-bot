@@ -9,9 +9,14 @@ HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, os.path.jo
 import core
 NO_LEDGER = '--no-ledger' in sys.argv
 LEDGER = os.path.join(HERE, 'ledger.csv'); RES = sys.argv[sys.argv.index('--out') + 1] if '--out' in sys.argv else os.path.join(HERE, 'results')
-GATE_VERSION = 'v2'; BOOT_BLOCK = 20; BOOT_DRAWS = 2000; BOOT_FLOOR = -0.25
+GATE_VERSION = 'v3'; BOOT_BLOCK = 20; BOOT_DRAWS = 2000; BOOT_FLOOR = -0.25
 OOS_FROM = '2023-01-01'; OOS_TOL = 0.15; PLACEBO_SHARE = 0.95; DD_FLOOR = 0.80; HOLDOUT_MIN = 9
 MAX_CHANGES_YR = 40; MAX_KILL_SHARE = 0.25; KILL_LEVEL = 0.80
+# Decision rule, fixed and written to the ledger before any result is computed (gate v3, point 1 of Klara's Moltbook review,
+# comment edcd268e on post 0416f527: pre-register the rule, not just the trial).
+DECISION_RULE = (f'gate_version={GATE_VERSION}; dd_floor={DD_FLOOR}; placebo_share={PLACEBO_SHARE}; oos_tol={OOS_TOL}; '
+                  f'boot_floor={BOOT_FLOOR}; boot_block={BOOT_BLOCK}; boot_draws={BOOT_DRAWS}; holdout_min={HOLDOUT_MIN}; '
+                  f'max_changes_yr={MAX_CHANGES_YR}; max_kill_share={MAX_KILL_SHARE}; kill_level={KILL_LEVEL}; oos_from={OOS_FROM}')
 
 def ledger_rows():
     return list(csv.DictReader(open(LEDGER))) if os.path.exists(LEDGER) else []
@@ -32,7 +37,11 @@ def run(spec, asset, fee=core.FEE, mask_year=None):
     return {'ts': ts, 'x': x, 'w': w, 'r': r, 'yrs': yrs}
 
 def placebo(res, draws, seed, metric):
-    """Same number and lengths of in-market runs (with the same weights) placed at random non-overlapping over the sample."""
+    """Same number and lengths of in-market runs (with the same weights) placed at random non-overlapping over the sample.
+    This IS the turnover- and exposure-matched random-entry baseline (gate v3, Klara's point 3): same trade count, same
+    time in market, same fee drag as the candidate -- only the placement against the price path differs. Returns its
+    share-worse-than (used for the pass/fail check) plus its median maxdd/final (reported alongside the candidate and
+    champion stats so a 'win' cannot come from a smaller/cheaper position)."""
     rng = random.Random(seed); x = res['x']; n = len(x); a = core.START; wv = res['w'][a:n - 2]; W = len(wv)
     runs = []; s = None
     for i, v in enumerate(wv):
@@ -41,14 +50,15 @@ def placebo(res, draws, seed, metric):
     if s is not None: runs.append(wv[s:].copy())
     k = len(runs); L = sum(len(b) for b in runs)
     if k == 0: return None
-    ret = x[2:] / x[1:-1] - 1; ret = ret[a:]; worse = 0
+    ret = x[2:] / x[1:-1] - 1; ret = ret[a:]; worse = 0; dds = []; fins = []
     for _ in range(draws):
         cuts = sorted(rng.randint(0, W - L) for _ in range(k)); gaps = [cuts[0]] + [cuts[i] - cuts[i - 1] for i in range(1, k)]
         order = runs[:]; rng.shuffle(order); p = np.zeros(W); pos = 0
         for g, b in zip(gaps, order): pos += g; p[pos:pos + len(b)] = b; pos += len(b)
         prev = np.concatenate([[0.0], p[:-1]]); st = core.stats(p * ret - core.FEE * np.abs(p - prev))
         worse += (st['maxdd'] > res['stats']['maxdd']) if metric == 'maxdd' else (st['final'] < res['stats']['final'])
-    return worse / draws
+        dds.append(st['maxdd']); fins.append(st['final'])
+    return {'share': worse / draws, 'med_maxdd': float(np.median(dds)), 'med_final': float(np.median(fins))}
 
 def boot_sharpe_diff(rn, ro, seed):
     """Paired circular block bootstrap of Sharpe(new) - Sharpe(champion); returns the 5th percentile."""
@@ -73,16 +83,23 @@ def main():
     family = sum(1 for r in rows0 if r['author'] == spec['author'] and r['event'] == 'registered') + (0 if seen else 1)
     if seen: ledger_add({'date_utc': now, 'event': 'rerun', 'name': spec['name'], 'author': spec['author'], 'spec_hash': h, 'trials': 0, 'detail': f'gate {GATE_VERSION} re-run of an already registered spec (no new trial)'})
     else: ledger_add({'date_utc': now, 'event': 'registered', 'name': spec['name'], 'author': spec['author'], 'spec_hash': h, 'trials': 1,
-                'detail': f"primary_metric={spec['primary_metric']}; registered before results; author's variants incl. this: {family}"})
+                'detail': f"primary_metric={spec['primary_metric']}; registered before results; decision rule fixed before run: {DECISION_RULE}; author's variants incl. this: {family}"})
     N = trial_count() + (0 if (seen or not NO_LEDGER) else 1); lines = []; checks = []
+    # Holdout touch counter (gate v3, Klara's point 2): every registered spec's gate run evaluates check 4 on the same
+    # 16-coin holdout, so the holdout has been looked at once per prior 'result' row, plus this run.
+    holdout_touches = sum(1 for r in rows0 if r['event'] == 'result') + 1
     def chk(name, ok, detail): checks.append((name, bool(ok), detail))
     base = {}
     for asset in ('BTC-EUR', 'ETH-EUR'):
         new = run(spec, asset); old = run(champ, asset); new['stats'] = core.stats(new['r']); old['stats'] = core.stats(old['r']); base[asset] = (new, old)
         s, o = new['stats'], old['stats']
+        pb = placebo(new, draws, int(h[:8], 16), spec['primary_metric'])
+        baseline_note = (f"cash: maxDD 0.0% / final x1.00; random-entry (same trade count/lengths/exposure, same fees) "
+                          f"median: maxDD {pb['med_maxdd']*100:.1f}% / final x{pb['med_final']:.2f}" if pb is not None else 'cash: maxDD 0.0% / final x1.00; never in market, no random-entry baseline')
         chk(f'1 regression {asset}', s['maxdd'] <= o['maxdd'] and s['final'] >= DD_FLOOR * o['final'],
-            f"maxDD {s['maxdd']*100:.1f}% vs {o['maxdd']*100:.1f}% | final x{s['final']:.2f} vs x{o['final']:.2f} (need >= {DD_FLOOR*100:.0f}% of champion)")
-        share = placebo(new, draws, int(h[:8], 16), spec['primary_metric'])
+            f"maxDD {s['maxdd']*100:.1f}% (time under water {s['tuw']*100:.0f}%) vs champion {o['maxdd']*100:.1f}% (tuw {o['tuw']*100:.0f}%) | "
+            f"final x{s['final']:.2f} vs x{o['final']:.2f} (need >= {DD_FLOOR*100:.0f}% of champion) | {baseline_note}")
+        share = pb['share'] if pb is not None else None
         chk(f'2 placebo {asset}', share is not None and share >= PLACEBO_SHARE, f"{spec['primary_metric']}: beats {share*100:.1f}% of {draws} block placebos (need {PLACEBO_SHARE*100:.0f}%)" if share is not None else 'never in market')
         cut = next(i for i, t in enumerate(new['ts'][core.START:len(new['x']) - 2]) if time.strftime('%Y-%m-%d', time.gmtime(t / 1000)) >= OOS_FROM)
         so = core.stats(new['r'][cut:])['sharpe']; sc = core.stats(old['r'][cut:])['sharpe']
@@ -106,8 +123,14 @@ def main():
         k = min(1.0, (wn[core.START:].mean() / wc[core.START:].mean())) if wc[core.START:].mean() > 0 else 1.0
         dn = core.stats(core.daily_returns(x, wn))['maxdd']; dk = core.stats(core.daily_returns(x, core.band_filter(tc * k)))['maxdd']
         tot += 1; wins += dn < dk - 1e-9; rows.append(f'{a}: new {dn*100:.1f}% vs constant-scale {dk*100:.1f}%')
-    chk('4 holdout vs constant exposure', wins >= HOLDOUT_MIN, f'lower maxDD than the constant-exposure comparator on {wins} of {tot} coins (need {HOLDOUT_MIN})')
-    chk('7 pre-registration', True, 'hypothesis, null and primary_metric present; hash written to ledger before results')
+    chk('4 holdout vs constant exposure', wins >= HOLDOUT_MIN,
+        f'lower maxDD than the constant-exposure comparator on {wins} of {tot} coins (need {HOLDOUT_MIN}). '
+        f'Universe and as-of date: see data/UNIVERSE.md -- these are coins alive on Bitvavo EUR today, applied back over their full '
+        f'history (survivorship bias, not a point-in-time universe). Holdout evaluated {holdout_touches} times across all registered '
+        f'trials including this one: each look does not by itself invalidate the holdout, but a result chosen because it did well on '
+        f'the holdout after many looks would.')
+    chk('7 pre-registration', True, f'hypothesis, null, primary_metric and the full decision rule were fixed and hashed to the ledger '
+        f'before any check ran (gate {GATE_VERSION}): {DECISION_RULE}')
     ok = all(c[1] for c in checks); verdict = 'BASELINE (this is the champion itself; check 4 cannot pass by design)' if h == ch else ('ACCEPTED' if ok else 'REJECTED')
     years = len(base['BTC-EUR'][0]['r']) / 365.0; hurdle = math.sqrt(2 * math.log(max(N, 2))) / math.sqrt(years)
     lines += [f"# Gate {GATE_VERSION} result: {spec['name']} ({h[:12]})", f"Run {now}. Champion: {champ['name']} ({ch[:12]}). Verdict: **{verdict}**.", '',

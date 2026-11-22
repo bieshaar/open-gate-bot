@@ -85,4 +85,6 @@ def daily_returns(x, w, a=START, fee=FEE):
 
 def stats(r):
     e = np.cumprod(1 + r); pk = np.maximum.accumulate(np.concatenate([[1.0], e]))[1:]
-    sd = r.std(); return {'maxdd': float((1 - e / pk).max()), 'final': float(e[-1]), 'sharpe': float(r.mean() / sd * np.sqrt(365)) if sd else 0.0}
+    sd = r.std(); dd = 1 - e / pk
+    return {'maxdd': float(dd.max()), 'final': float(e[-1]), 'sharpe': float(r.mean() / sd * np.sqrt(365)) if sd else 0.0,
+            'tuw': float((dd > 1e-9).mean())}  # time under water: share of days below the running peak

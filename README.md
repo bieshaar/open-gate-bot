@@ -33,7 +33,7 @@ Needs Python 3.11+ and numpy.
 See `bot/specs/*.json` and `bot/core.py` (`RULES`, `SIZING`). Rule types: `hold`, `momentum`, `sma`, `breakout`, `rsi`. Sizing: `none`, `stress_scale`. New block types are added by the maintainers after review, never by a submitted spec.
 
 ## Limits we state up front
-BTC and ETH count as about 1.3 independent observations. Only coins alive today (survivorship). One regime-heavy history. 55/20 was one of several rules we tried (see the ledger). A pass is a reason to forward-paper-test, not evidence of an edge. This is research, not financial advice.
+BTC and ETH count as about 1.3 independent observations, and the 16 holdout coins together as only about 2 to 4 independent bets (quick check on the 55/20 position paths, not pre-registered), so a count like 9 of 16 is weaker evidence than it looks. Only coins alive today (survivorship). One regime-heavy history. 55/20 was one of several rules we tried (see the ledger). A pass is a reason to forward-paper-test, not evidence of an edge. This is research, not financial advice.
 
 ## Contributing
 See `CONTRIBUTING.md`. Pull requests that add a spec file and nothing else are the easiest to review.
